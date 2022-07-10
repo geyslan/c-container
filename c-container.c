@@ -21,17 +21,16 @@ int
 main(int argc, char *argv[])
 {
 	int flags = CLONE_NEWUTS | CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWIPC | CLONE_NEWNET;
-
 	if (unshare(flags) == -1)
 		errExit("unshare");
-	
-	pid_t cpid = fork();
-	if (cpid == -1)
-		errExit("fork");
 
 	char *root_path = realpath("./alpine-minirootfs", NULL);
 	if (!root_path)
 		errExit("realpath");
+
+	pid_t cpid = fork();
+	if (cpid == -1)
+		errExit("fork");
 
  	// child
 	if (cpid == 0) {
