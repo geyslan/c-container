@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdnoreturn.h>
 #include <string.h>
+#include <sys/mount.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -24,10 +25,6 @@ main(int argc, char *argv[])
 	if (unshare(flags) == -1)
 		errExit("unshare");
 	
-	char *hostname = "container";
-	if (sethostname(hostname, strlen(hostname)) == -1)
-		errExit("sethostname");
-
 	pid_t cpid = fork();
 	if (cpid == -1)
 		errExit("fork");
@@ -35,6 +32,25 @@ main(int argc, char *argv[])
  	// child
 	if (cpid == 0) {
 		char *args[] = { "/bin/sh", NULL };
+		char *hostname = "container";
+		
+		if (sethostname(hostname, strlen(hostname)) == -1)
+			errExit("sethostname");
+
+		if (chroot("./alpine-minirootfs") == -1)
+			errExit("chroot");
+
+		if (chdir("/") == -1)
+			errExit("chdir");
+
+		if (setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1) == -1)
+			errExit("setenv");
+
+		if (setenv("PS1", "\\u@\\h$ ", 1) == -1)
+			errExit("setenv");
+
+		if (mount("none", "/proc", "proc", 0, "") == -1)
+			errExit("mount");
 
 		execv(args[0], args);
 		errExit("execv");
