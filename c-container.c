@@ -29,6 +29,10 @@ main(int argc, char *argv[])
 	if (cpid == -1)
 		errExit("fork");
 
+	char *root_path = realpath("./alpine-minirootfs", NULL);
+	if (!root_path)
+		errExit("realpath");
+
  	// child
 	if (cpid == 0) {
 		char *args[] = { "/bin/sh", NULL };
@@ -37,7 +41,7 @@ main(int argc, char *argv[])
 		if (sethostname(hostname, strlen(hostname)) == -1)
 			errExit("sethostname");
 
-		if (chroot("./alpine-minirootfs") == -1)
+		if (chroot(root_path) == -1)
 			errExit("chroot");
 
 		if (chdir("/") == -1)
@@ -49,7 +53,7 @@ main(int argc, char *argv[])
 		if (setenv("PS1", "\\u@\\h$ ", 1) == -1)
 			errExit("setenv");
 
-		if (mount("none", "/proc", "proc", 0, "") == -1)
+		if (mount("proc", "/proc", "proc", 0, "") == -1)
 			errExit("mount");
 
 		execv(args[0], args);
@@ -60,6 +64,18 @@ main(int argc, char *argv[])
 	pid_t wpid = waitpid(cpid, NULL, 0);
 	if (wpid == -1)
 		errExit("waitpid");
+
+	char *proc_path = malloc(strlen(root_path) + strlen("/proc") + 1);
+	if (!proc_path)
+		errExit("malloc");
+	if (sprintf(proc_path, "%s/proc", root_path) < 0)
+		errExit("sprintf");
+
+	if (umount(proc_path) == -1)
+		errExit("umount");
+
+	free(proc_path);
+	free(root_path);
 
 	exit(EXIT_SUCCESS);
 }
